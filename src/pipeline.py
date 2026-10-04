@@ -57,15 +57,22 @@ class ScholarLensPipeline:
             progress_callback(0.15, "Stage 1/3: Synthesizing Executive Digest & TL;DR...")
         exec_summary = self.generate_executive_summary(truncated_text)
 
+        # Gentle pacing between stages to respect free-tier RPM limits
+        time.sleep(2.0)
+
         # Stage 2: Claim Verification Audit
         if progress_callback:
             progress_callback(0.50, "Stage 2/3: Auditing Empirical Claims & Methodology...")
         claim_audit = self.audit_claims(truncated_text)
 
+        # Gentle pacing between stages
+        time.sleep(2.0)
+
         # Stage 3: Jargon Decoder
         if progress_callback:
             progress_callback(0.85, "Stage 3/3: Translating Domain Jargon & Analogies...")
         jargon_glossary = self.decode_jargon(truncated_text)
+
 
         if progress_callback:
             progress_callback(1.0, "Analysis complete!")

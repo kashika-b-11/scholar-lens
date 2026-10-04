@@ -80,7 +80,7 @@ class LLMClient:
             )
 
         temp = temperature if temperature is not None else self.temperature
-        retries = 3
+        retries = 5
         backoff = 2.0
 
         for attempt in range(1, retries + 1):
@@ -96,7 +96,24 @@ class LLMClient:
                 logger.warning(f"API call attempt {attempt}/{retries} failed: {err_str}")
                 if attempt == retries:
                     raise LLMClientError(f"LLM API request failed after {retries} attempts: {err_str}")
-                time.sleep(backoff * attempt)
+
+                # Intelligent Rate-Limit (429 / RESOURCE_EXHAUSTED) Handling
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    # Look for Google's explicit retry delay instruction: "Please retry in 9.65s" or "retryDelay": "9s"
+                    delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                    if not delay_match:
+                        delay_match = re.search(r'retryDelay["\']?:\s*["\']?(\d+(?:\.\d+)?)s?', err_str, re.IGNORECASE)
+
+                    if delay_match:
+                        sleep_time = float(delay_match.group(1)) + 1.5
+                    else:
+                        sleep_time = max(10.0, backoff * (2 ** attempt))
+
+                    logger.info(f"Rate limit encountered. Cooling down for {sleep_time:.1f}s before retry {attempt + 1}...")
+                    time.sleep(sleep_time)
+                else:
+                    time.sleep(backoff * attempt)
+
 
         raise LLMClientError("Unexpected loop termination in generate_text.")
 
