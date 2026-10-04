@@ -76,13 +76,24 @@ class AppConfig:
         return int(self._raw_config.get("document", {}).get("min_character_limit", 300))
 
     def get_api_key(self, provider: Optional[str] = None) -> Optional[str]:
-        """Fetches the corresponding API key from environment variables."""
+        """Fetches the corresponding API key from environment variables, reloading .env if needed."""
+        # Always reload to pick up newly added keys without requiring server restart
+        if ENV_PATH.exists():
+            load_dotenv(dotenv_path=ENV_PATH, override=True)
+        elif (CONFIG_DIR / ".env").exists():
+            load_dotenv(dotenv_path=CONFIG_DIR / ".env", override=True)
+        else:
+            load_dotenv(override=True)
+
         prov = (provider or self.default_provider).lower()
         if prov == "gemini":
-            return os.getenv("GEMINI_API_KEY")
+            key = os.getenv("GEMINI_API_KEY")
+            return key.strip() if key else None
         elif prov == "openai":
-            return os.getenv("OPENAI_API_KEY")
+            key = os.getenv("OPENAI_API_KEY")
+            return key.strip() if key else None
         return None
+
 
 
 # Global singleton instance for easy import

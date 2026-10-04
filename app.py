@@ -130,6 +130,10 @@ api_key_input = st.sidebar.text_input(
     type="password",
     help="Enter your API key or configure it in .env file."
 )
+effective_api_key = api_key_input.strip() or env_api_key
+if env_api_key:
+    st.sidebar.caption("🔒 Key loaded from `.env` file.")
+
 
 # Model Selection
 if selected_provider == "gemini":
@@ -201,7 +205,7 @@ st.markdown(
 
 # Execution Logic
 if analyze_btn:
-    if not api_key_input:
+    if not effective_api_key:
         st.error(f"⚠️ Please provide an API key for {selected_provider.upper()} in the sidebar or in your `.env` file.")
     elif not paper_raw_text.strip():
         st.warning("⚠️ Please provide paper text via sample, file upload, or text paste.")
@@ -217,10 +221,11 @@ if analyze_btn:
             # Step 2: Initialize LLM Client & Pipeline
             llm_client = LLMClient(
                 provider=selected_provider,
-                api_key=api_key_input,
+                api_key=effective_api_key,
                 model_name=selected_model,
                 temperature=temperature,
             )
+
             pipeline = ScholarLensPipeline(llm_client=llm_client)
 
             # Step 3: Run Multi-Stage Pipeline with Progress Bar
@@ -403,10 +408,11 @@ if result is not None:
                 with st.spinner("Searching paper text and citing answers..."):
                     llm_client = LLMClient(
                         provider=selected_provider,
-                        api_key=api_key_input,
+                        api_key=effective_api_key,
                         model_name=selected_model,
                         temperature=0.1,
                     )
+
                     pipeline = ScholarLensPipeline(llm_client=llm_client)
                     response_text = pipeline.ask_grounded_question(
                         text=st.session_state.current_paper_text,
