@@ -148,73 +148,77 @@ class LLMClient:
     def _call_gemini(
         self, prompt: str, system_instruction: Optional[str], temperature: float
     ) -> str:
-        # Alias legacy/retired model names to current recommended production models
-        target_model = self.model_name
-        if target_model in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
-            target_model = "gemini-3.8-flash"
+        """Invokes Google Gemini API with automatic quota-aware model failover."""
+        # Available active models in priority order
+        model_candidates = [self.model_name]
+        fallback_pool = [
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-flash-lite-latest",
+        ]
+        for m in fallback_pool:
+            if m not in model_candidates and m != "gemini-3.8-flash":
+                model_candidates.append(m)
 
-        # 1. Try SDK if available
-        if self._genai_client is not None:
-            try:
-                config_args = {
+        # Alias deprecated names
+        if self.model_name in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+            model_candidates[0] = "gemini-3.5-flash"
+
+        last_error_msg = ""
+        for model in model_candidates:
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model}:generateContent?key={self.api_key}"
+            )
+            
+            contents_payload = [{"parts": [{"text": prompt}]}]
+            body: Dict[str, Any] = {
+                "contents": contents_payload,
+                "generationConfig": {
                     "temperature": temperature,
-                    "max_output_tokens": self.max_tokens,
-                }
-                if system_instruction:
-                    config_args["system_instruction"] = system_instruction
-
-                response = self._genai_client.models.generate_content(
-                    model=target_model,
-                    contents=prompt,
-                    config=config_args,
-                )
-                return response.text
-            except Exception as e:
-                logger.info(f"SDK call failed ({e}); falling back to Gemini REST API.")
-
-        # 2. Resilient Direct REST Call
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{target_model}:generateContent?key={self.api_key}"
-        )
-        
-        contents_payload = [{"parts": [{"text": prompt}]}]
-        body: Dict[str, Any] = {
-            "contents": contents_payload,
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": self.max_tokens,
-            },
-        }
-
-        if system_instruction:
-            body["systemInstruction"] = {
-                "parts": [{"text": system_instruction}]
+                    "maxOutputTokens": self.max_tokens,
+                },
             }
 
-        headers = {"Content-Type": "application/json"}
-        resp = requests.post(url, headers=headers, json=body, timeout=60)
-        
-        # If model was retired/not found, attempt automatic fallback to gemini-3.8-flash or gemini-flash-latest
-        if resp.status_code == 404 and target_model != "gemini-3.8-flash":
-            fallback_url = (
-                f"https://generativelanguage.googleapis.com/v1beta/models/"
-                f"gemini-3.8-flash:generateContent?key={self.api_key}"
-            )
-            resp = requests.post(fallback_url, headers=headers, json=body, timeout=60)
+            if system_instruction:
+                body["systemInstruction"] = {
+                    "parts": [{"text": system_instruction}]
+                }
 
-        if resp.status_code != 200:
-            raise LLMClientError(f"Gemini API returned status {resp.status_code}: {resp.text}")
+            headers = {"Content-Type": "application/json"}
+            try:
+                resp = requests.post(url, headers=headers, json=body, timeout=45)
+            except Exception as e:
+                last_error_msg = str(e)
+                continue
 
-        res_data = resp.json()
-        try:
-            candidates = res_data.get("candidates", [])
-            if not candidates:
-                raise LLMClientError(f"No response candidates returned: {res_data}")
-            parts = candidates[0].get("content", {}).get("parts", [])
-            return "".join(part.get("text", "") for part in parts if "text" in part)
-        except Exception as e:
-            raise LLMClientError(f"Error parsing Gemini REST response: {e}")
+            # If this model hit a daily quota (delay > 60s or daily limit) or 404, try next model candidate
+            if resp.status_code == 429 and ("PerDay" in resp.text or "43853s" in resp.text or "retry in 12h" in resp.text):
+                logger.warning(f"Model {model} exceeded daily free-tier quota. Failing over to next available model...")
+                last_error_msg = resp.text
+                continue
+            elif resp.status_code == 404:
+                logger.warning(f"Model {model} returned 404. Failing over...")
+                last_error_msg = resp.text
+                continue
+            elif resp.status_code != 200:
+                # Normal rate-limit or error (let outer retry loop handle short pauses)
+                raise LLMClientError(f"Gemini API returned status {resp.status_code}: {resp.text}")
+
+            res_data = resp.json()
+            try:
+                candidates = res_data.get("candidates", [])
+                if not candidates:
+                    raise LLMClientError(f"No response candidates returned: {res_data}")
+                parts = candidates[0].get("content", {}).get("parts", [])
+                self.model_name = model  # Persist the functioning model
+                return "".join(part.get("text", "") for part in parts if "text" in part)
+            except Exception as e:
+                raise LLMClientError(f"Error parsing Gemini response from {model}: {e}")
+
+        raise LLMClientError(f"All Gemini models exhausted quotas: {last_error_msg}")
+
 
 
     def _call_openai(

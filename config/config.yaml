@@ -15,13 +15,14 @@ llm:
   
   # Google Gemini settings
   gemini:
-    model: "gemini-3.8-flash" # Current recommended model with ultra-fast speed & high reasoning
-    fallback_model: "gemini-flash-latest"
+    model: "gemini-3.5-flash" # High quota availability, fast response
+    fallback_model: "gemini-3.5-flash-lite"
     temperature: 0.2          # Low temperature ensures factual adherence and prevents hallucination
     top_p: 0.95
     max_output_tokens: 3000
     timeout_seconds: 45
-    max_retries: 3
+    max_retries: 5
+
 
 
   # OpenAI / Compatible alternative settings
