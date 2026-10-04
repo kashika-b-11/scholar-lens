@@ -62,6 +62,13 @@ def test_document_parser():
     assert "Abstract" in metadata.detected_sections
     assert "Introduction" in metadata.detected_sections
     assert "Experiments" in metadata.detected_sections
+
+    # Test that pre-extracted text with a .pdf filename does not attempt to open as file
+    pdf_string_sample = "1 \nA Comparative Study of Deep Learning Approaches for Face Mask Detection"
+    cleaned_pdf_str, meta_pdf_str = DocumentParser.parse_document(pdf_string_sample, "paper.pdf")
+    assert "Comparative Study" in cleaned_pdf_str
+    assert meta_pdf_str.word_count > 0
+
     print("✅ Document parser test passed.")
 
 

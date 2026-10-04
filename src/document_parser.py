@@ -32,8 +32,13 @@ class DocumentParser:
         Args:
             pdf_source: Binary bytes, file stream, or filesystem path.
         """
+        import os
         if isinstance(pdf_source, str):
-            reader = PdfReader(pdf_source)
+            if os.path.isfile(pdf_source):
+                reader = PdfReader(pdf_source)
+            else:
+                # The string is already extracted text content
+                return pdf_source
         elif isinstance(pdf_source, bytes):
             reader = PdfReader(io.BytesIO(pdf_source))
         else:
@@ -45,6 +50,7 @@ class DocumentParser:
             extracted_pages.append(page_text)
 
         return "\n\n".join(extracted_pages)
+
 
     @classmethod
     def clean_academic_text(cls, raw_text: str) -> str:
@@ -93,10 +99,21 @@ class DocumentParser:
         Returns:
             Tuple of (cleaned_text, DocumentMetadata)
         """
-        if filename.lower().endswith(".pdf") or isinstance(source, (bytes, io.BytesIO)):
-            raw_text = cls.extract_from_pdf(source)
+        import os
+        if isinstance(source, (bytes, io.BytesIO)):
+            if filename.lower().endswith(".pdf"):
+                raw_text = cls.extract_from_pdf(source)
+            else:
+                raw_text = source.decode("utf-8", errors="ignore") if isinstance(source, bytes) else source.read().decode("utf-8", errors="ignore")
+        elif isinstance(source, str) and os.path.isfile(source):
+            if filename.lower().endswith(".pdf"):
+                raw_text = cls.extract_from_pdf(source)
+            else:
+                with open(source, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_text = f.read()
         else:
             raw_text = str(source)
+
 
         cleaned_text = cls.clean_academic_text(raw_text)
         char_count = len(cleaned_text)
