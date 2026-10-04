@@ -137,11 +137,12 @@ if env_api_key:
 
 # Model Selection
 if selected_provider == "gemini":
-    model_choices = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    model_choices = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash"]
     default_model = config.gemini_model if config.gemini_model in model_choices else model_choices[0]
 else:
     model_choices = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
     default_model = config.openai_model if config.openai_model in model_choices else model_choices[0]
+
 
 selected_model = st.sidebar.selectbox("Model", model_choices, index=model_choices.index(default_model))
 

@@ -131,7 +131,11 @@ class LLMClient:
     def _call_gemini(
         self, prompt: str, system_instruction: Optional[str], temperature: float
     ) -> str:
-        """Invokes Google Gemini API via official SDK or high-performance direct REST."""
+        # Alias legacy/retired model names to current recommended production models
+        target_model = self.model_name
+        if target_model in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+            target_model = "gemini-3.8-flash"
+
         # 1. Try SDK if available
         if self._genai_client is not None:
             try:
@@ -143,7 +147,7 @@ class LLMClient:
                     config_args["system_instruction"] = system_instruction
 
                 response = self._genai_client.models.generate_content(
-                    model=self.model_name,
+                    model=target_model,
                     contents=prompt,
                     config=config_args,
                 )
@@ -154,7 +158,7 @@ class LLMClient:
         # 2. Resilient Direct REST Call
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model_name}:generateContent?key={self.api_key}"
+            f"{target_model}:generateContent?key={self.api_key}"
         )
         
         contents_payload = [{"parts": [{"text": prompt}]}]
@@ -174,6 +178,14 @@ class LLMClient:
         headers = {"Content-Type": "application/json"}
         resp = requests.post(url, headers=headers, json=body, timeout=60)
         
+        # If model was retired/not found, attempt automatic fallback to gemini-3.8-flash or gemini-flash-latest
+        if resp.status_code == 404 and target_model != "gemini-3.8-flash":
+            fallback_url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"gemini-3.8-flash:generateContent?key={self.api_key}"
+            )
+            resp = requests.post(fallback_url, headers=headers, json=body, timeout=60)
+
         if resp.status_code != 200:
             raise LLMClientError(f"Gemini API returned status {resp.status_code}: {resp.text}")
 
@@ -183,9 +195,10 @@ class LLMClient:
             if not candidates:
                 raise LLMClientError(f"No response candidates returned: {res_data}")
             parts = candidates[0].get("content", {}).get("parts", [])
-            return "".join(part.get("text", "") for part in parts)
+            return "".join(part.get("text", "") for part in parts if "text" in part)
         except Exception as e:
             raise LLMClientError(f"Error parsing Gemini REST response: {e}")
+
 
     def _call_openai(
         self, prompt: str, system_instruction: Optional[str], temperature: float

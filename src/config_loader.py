@@ -49,11 +49,12 @@ class AppConfig:
 
     @property
     def gemini_model(self) -> str:
-        return self._raw_config.get("llm", {}).get("gemini", {}).get("model", "gemini-2.0-flash")
+        return self._raw_config.get("llm", {}).get("gemini", {}).get("model", "gemini-3.8-flash")
 
     @property
     def gemini_fallback_model(self) -> str:
-        return self._raw_config.get("llm", {}).get("gemini", {}).get("fallback_model", "gemini-1.5-flash")
+        return self._raw_config.get("llm", {}).get("gemini", {}).get("fallback_model", "gemini-flash-latest")
+
 
     @property
     def openai_model(self) -> str:
