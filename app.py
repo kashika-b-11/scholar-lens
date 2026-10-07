@@ -32,61 +32,65 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom Academic Theme CSS
+# Custom Academic Theme CSS (Dark & Light Mode Adaptive)
 st.markdown("""
 <style>
     .main-header {
         font-size: 2.2rem;
         font-weight: 700;
-        color: #1E3A8A;
+        color: #3B82F6;
         margin-bottom: 0.2rem;
     }
     .sub-header {
         font-size: 1.05rem;
-        color: #4B5563;
+        color: #94A3B8;
         margin-bottom: 1.5rem;
     }
     .tldr-box {
-        background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
-        border-left: 5px solid #4F46E5;
+        background: rgba(99, 102, 241, 0.12);
+        border-left: 5px solid #6366F1;
         padding: 1.2rem;
         border-radius: 8px;
         margin-bottom: 1.2rem;
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 500;
-        color: #1E1B4B;
+        color: inherit;
     }
     .status-badge-verified {
-        background-color: #DEF7EC;
-        color: #03543F;
-        padding: 0.25rem 0.6rem;
+        background-color: rgba(16, 185, 129, 0.18);
+        color: #10B981;
+        padding: 0.25rem 0.65rem;
         border-radius: 12px;
         font-weight: 600;
         font-size: 0.85rem;
         display: inline-block;
+        border: 1px solid rgba(16, 185, 129, 0.35);
     }
     .status-badge-partial {
-        background-color: #FEF08A;
-        color: #713F12;
-        padding: 0.25rem 0.6rem;
+        background-color: rgba(245, 158, 11, 0.18);
+        color: #F59E0B;
+        padding: 0.25rem 0.65rem;
         border-radius: 12px;
         font-weight: 600;
         font-size: 0.85rem;
         display: inline-block;
+        border: 1px solid rgba(245, 158, 11, 0.35);
     }
     .status-badge-unsupported {
-        background-color: #FDE8E8;
-        color: #9B1C1C;
-        padding: 0.25rem 0.6rem;
+        background-color: rgba(239, 68, 68, 0.18);
+        color: #EF4444;
+        padding: 0.25rem 0.65rem;
         border-radius: 12px;
         font-weight: 600;
         font-size: 0.85rem;
         display: inline-block;
+        border: 1px solid rgba(239, 68, 68, 0.35);
     }
     .metric-card {
-        background-color: #F9FAFB;
-        border: 1px solid #E5E7EB;
-        padding: 1rem;
+        background-color: rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        color: inherit;
+        padding: 1.1rem;
         border-radius: 8px;
         margin-bottom: 0.8rem;
     }
@@ -326,9 +330,11 @@ if result is not None:
             with app_cols[i % len(app_cols)]:
                 st.markdown(f"""
                 <div class="metric-card">
-                    <strong>Application {i+1}</strong><br>{app_text}
+                    <div style="font-weight: 700; color: #6366F1; font-size: 1.02rem; margin-bottom: 0.4rem;">💡 Application {i+1}</div>
+                    <div style="line-height: 1.5;">{app_text}</div>
                 </div>
                 """, unsafe_allow_html=True)
+
 
     # --------------------------------------------------------------------------
     # TAB 2: CLAIMS & METHODOLOGY AUDIT
@@ -378,12 +384,13 @@ if result is not None:
                     st.markdown("**🎈 Real-World Intuitive Analogy:**")
                     st.markdown(
                         f"""
-                        <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 0.8rem; border-radius: 6px; color: #92400E;">
+                        <div style="background-color: rgba(245, 158, 11, 0.12); border-left: 4px solid #F59E0B; padding: 0.9rem; border-radius: 6px; line-height: 1.5;">
                             {term_item.intuitive_analogy}
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
+
                 st.markdown("---")
 
     # --------------------------------------------------------------------------
